@@ -2791,7 +2791,7 @@ function startMode(mode) {
   if (mode === 'matching')  { startMatching();  return; }
   if (mode === 'scramble')  { startScramble();  return; }
 
-  sessionWords = shuffle(wordList).slice(0, Math.min(10, wordList.length));
+  sessionWords = shuffle(wordList);  // 전체 단어 학습
   renderDots();
   renderCurrent();
 }
@@ -3022,7 +3022,7 @@ function startFlashcard() {
   wordList     = unitData[activeUnit];
   fcRound      = 1;
   fcDontKnow   = [];
-  sessionWords = shuffle(wordList).slice(0, Math.min(10, wordList.length));
+  sessionWords = shuffle(wordList);  // 전체 단어 학습
   currentIdx   = 0;
   correct      = 0;
   wrong        = 0;
@@ -3454,10 +3454,14 @@ function skipTyping() {
 // MATCHING GAME
 // ═══════════════════════════════════════════════
 let matchRound = 1;
-const MATCH_TOTAL_ROUNDS = 3;
+// 매칭은 5개씩 — 단어 수에 따라 라운드 수 동적 결정 (startMatching에서 설정)
+let MATCH_TOTAL_ROUNDS = 3;
 
 function startMatching() {
   matchRound = 1;
+  // 5개씩 나눠서 전체 단어 커버 (20개 → 4라운드)
+  MATCH_TOTAL_ROUNDS = Math.ceil(wordList.length / 5);
+  window._matchShuffled = null;  // 라운드 시작 시 초기화
   _runMatchingRound();
 }
 
@@ -3466,7 +3470,14 @@ function _runMatchingRound() {
   startTimer('matching');
   if (matchRound === 1 && !bgMusicPlaying) startBgMusic('matching');
   matchSel = null; matchedPairs = 0;
-  const pick = shuffle(wordList).slice(0, Math.min(5, wordList.length));
+  // 매 라운드마다 다른 단어 5개씩 (전체를 라운드로 커버)
+  const wordsPerRound = 5;
+  const roundStart = ((matchRound - 1) * wordsPerRound) % wordList.length;
+  const shuffledAll = matchRound === 1 ? shuffle(wordList) : (window._matchShuffled || shuffle(wordList));
+  if (matchRound === 1) window._matchShuffled = shuffledAll;
+  const pick = shuffledAll.slice(roundStart, roundStart + wordsPerRound).concat(
+    shuffledAll.slice(0, Math.max(0, roundStart + wordsPerRound - shuffledAll.length))
+  ).slice(0, wordsPerRound);
   sessionWords = pick;
   const enItems = pick.map((w, i) => ({ id:i, type:'en', text:w.en, pair:i }));
   const koItems = pick.map((w, i) => ({ id:i+pick.length, type:'ko', text:w.ko, pair:i }));
@@ -3543,7 +3554,7 @@ function selectMatch(i) {
 // ═══════════════════════════════════════════════
 function startScramble() {
   resetHearts();
-  sessionWords = shuffle(wordList).slice(0, Math.min(8, wordList.length));
+  sessionWords = shuffle(wordList);  // 전체 단어 학습
   currentIdx = 0; correct = wrong = combo = 0;
   renderDots();
   renderScramble();
